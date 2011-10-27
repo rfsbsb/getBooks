@@ -1,8 +1,8 @@
 Get Book
 ========
 
-This is a simple PHP script to retreive data of books from *Livraria Cultura* website.
-This script relys on PHP DOM classes and was only tested in UNIX enviroment with * PHP >= 5.3 *
+This is a simple PHP script to retreive data of books from **Livraria Cultura** website.
+This script relys on PHP DOM classes and was only tested in UNIX enviroment with  **PHP >= 5.3**
 
 There are two classes:
 
