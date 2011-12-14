@@ -127,3 +127,4 @@ class BookRetreiver {
 }
 
 $books = new BookRetreiver();
+print_r($books->findTopBooks());
