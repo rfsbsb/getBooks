@@ -35,6 +35,7 @@ class BookRetreiver {
   public $year = NULL;
   public $title = NULL;
   public $summary = NULL;
+  public $author = NULL;
   protected  $base_url = NULL;
 
   function __construct($url = NULL) {
@@ -65,6 +66,12 @@ class BookRetreiver {
       if (sizeof($summary) > 0) {
         $this->summary = $summary[0];
       }
+
+      $author = $dom->find("//div[@class='detalheEsq2']/p[2]/a");
+      if (sizeof($author) > 0) {
+        $this->author = $this->parse_author($author[0]);
+      }
+
     }
     $this->base_url = "http://www.livrariacultura.com.br";
   }
@@ -91,10 +98,28 @@ class BookRetreiver {
         if (strlen($tokens[1]) <= 3) {
           $title = $tokens[1] . " " . $tokens[0];
         }
-        $title = ucwords($title);
+        // If title has a subtitle treat it accordingly
+        if (strstr($tokens[1], ' - ')) {
+          $subtitle_tokens = explode(" - ", $tokens[1]);
+          $title = $subtitle_tokens[0] . " " . $tokens[0] . " - " . $subtitle_tokens[1];
+        }
       }
+      $title = ucwords($title);
     }
     return $title;
+  }
+
+  function parse_author($author=NULL) {
+    if ($author) {
+      $author = strtolower($author);
+      $tokens = explode(", ",$author);
+      // Only reformat if there is a comma
+      if (sizeof($tokens) > 1) {
+        $author = $tokens[1] . " " . $tokens[0];
+      }
+      $author = ucwords($author);
+    }
+    return $author;
   }
 
   function findTopBooks() {
