@@ -11,7 +11,7 @@ class DomFinder {
     $this->xpath->registerNamespace("html", "http://www.w3.org/1999/xhtml");
   }
 
-  function find($criteria=NULL,$getAttr=FALSE) {
+  function find($criteria = NULL, $getAttr = FALSE) {
     if ($criteria) {
       $entries = $this->xpath->query($criteria);
       $results = array();
@@ -29,20 +29,17 @@ class DomFinder {
 }
 
 
-class BookRetreiver {
+class Book {
   public $cover = NULL;
   public $isbn = NULL;
   public $year = NULL;
   public $title = NULL;
   public $summary = NULL;
   public $author = NULL;
-  protected  $base_url = NULL;
 
-  function __construct($url = NULL) {
-    if ($url) {
-      $dom = new DomFinder($url);
+  function __construct($dom = NULL) {
+    if ($dom) {
       $isbn = $dom->find("//div[@class='espTec']/p[2]/script");
-
       if (sizeof($isbn) > 0) {
         $this->isbn = $this->parse_isbn($isbn[0]);
       }
@@ -73,26 +70,25 @@ class BookRetreiver {
       }
 
     }
-    $this->base_url = "http://www.livrariacultura.com.br";
   }
 
-  function get_cover($cover=null) {
+  function get_cover($cover = null) {
     if ($cover) {
       $cover = str_replace("capas","capas_lg", $cover);
     }
     return $cover;
   }
 
-  function parse_isbn($line) {
-    $line = str_replace("document.write('","",$line);
-    $line = str_replace("');","",$line);
-    return trim(html_entity_decode($line));
+  function parse_isbn($isbn) {
+    $isbn = str_replace("document.write('", "", $isbn);
+    $isbn = str_replace("');", "", $isbn);
+    return trim(html_entity_decode($isbn));
   }
 
-  function parse_title($title=NULL) {
+  function parse_title($title = NULL) {
     if ($title) {
       $title = strtolower($title);
-      $tokens = explode(", ",$title);
+      $tokens = explode(", ", $title);
       if (sizeof($tokens) > 1) {
         // Only reformat words with inverted article title name
         if (strlen($tokens[1]) <= 3) {
@@ -109,10 +105,10 @@ class BookRetreiver {
     return $title;
   }
 
-  function parse_author($author=NULL) {
+  function parse_author($author = NULL) {
     if ($author) {
       $author = strtolower($author);
-      $tokens = explode(", ",$author);
+      $tokens = explode(", ", $author);
       // Only reformat if there is a comma
       if (sizeof($tokens) > 1) {
         $author = $tokens[1] . " " . $tokens[0];
@@ -122,13 +118,19 @@ class BookRetreiver {
     return $author;
   }
 
+}
+
+
+class BookRetreiver {
+  protected $base_url = "http://www.livrariacultura.com.br";
+
   function findTopBooks() {
     $books = array();
     $dom = new DomFinder($this->base_url . "/scripts/cultura/maisv/maisv.asp");
-    $book_urls = $dom->find("//div[@class='img_capa']/a",'href');
+    $book_urls = $dom->find("//div[@class='img_capa']/a", 'href');
     foreach ($book_urls as $book_url) {
-      $book_url = $this->base_url . $book_url;
-      $book = new self($book_url);
+      $book_dom = new DomFinder($this->base_url . $book_url);
+      $book = new Book($book_dom);
       $books[] = $book;
     }
     return $books;
@@ -136,14 +138,14 @@ class BookRetreiver {
 
   function findBookByISBN($isbn = NULL) {
     if ($isbn) {
-      $urlcover = 'http://www.livrariacultura.com.br/scripts/busca/busca.asp?';
+      $search_url = 'http://www.livrariacultura.com.br/scripts/busca/busca.asp?';
       $params['avancada'] = 1;
       $params['titem'] = 1;
       $params['palavraISBN'] = $isbn;
 
       $query_string = http_build_query($params);
-
-      $book = new self($urlcover . $query_string);
+      $book_dom = new DomFinder($search_url . $query_string);
+      $book = new Book($book_dom);
       return $book;
 
     }
