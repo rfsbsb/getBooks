@@ -34,8 +34,10 @@ class Book {
   public $isbn = NULL;
   public $year = NULL;
   public $title = NULL;
+  public $sub_title = NULL;
   public $summary = NULL;
   public $author = NULL;
+  public $pages = NULL;
 
   function __construct($dom = NULL) {
     if ($dom) {
@@ -49,14 +51,24 @@ class Book {
         $this->year = trim($year[0]);
       }
 
+      $pages = $dom->find("//div[@class='espTec']/p[8]/text()");
+      if (sizeof($pages) > 0) {
+        $this->pages = trim($pages[0]);
+      }
+
       $cover = $dom->find("//div[@class='boxImg2']/img",'src');
       if (sizeof($cover) > 0) {
         $this->cover = $this->get_cover($cover[0]);
       }
 
-      $title = $dom->find("//div[@class='detalheEsq2']/h2");
+      $title = $dom->find("//div[@class='detalheEsq2']/h2[contains(@class, 'resenha')]");
       if (sizeof($title) > 0) {
         $this->title = $this->parse_title($title[0]);
+      }
+
+      $sub_title = $dom->find("//div[@class='detalheEsq2']/h2[contains(@class, 'sub_resenha')]");
+      if (sizeof($sub_title) > 0) {
+        $this->sub_title = $this->parse_title($sub_title[0]);
       }
 
       $summary = $dom->find("//div[@class='resenha']/p");
