@@ -150,7 +150,7 @@ class BookRetreiver {
 
   function findBookByISBN($isbn = NULL) {
     if ($isbn) {
-      $search_url = 'http://www.livrariacultura.com.br/scripts/busca/busca.asp?';
+      $search_url = $this->base_url . '/scripts/busca/busca.asp?';
       $params['avancada'] = 1;
       $params['titem'] = 1;
       $params['palavraISBN'] = $isbn;
