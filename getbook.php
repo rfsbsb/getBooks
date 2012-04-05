@@ -26,6 +26,18 @@ class DomFinder {
     }
     return NULL;
   }
+
+  function count($criteria = NULL) {
+    $items = 0;
+    if ($criteria) {
+      $entries = $this->xpath->query($criteria);
+      foreach ($entries as $entry) {
+        $items++;
+      }
+    }
+    return $items;
+  }
+
 }
 
 
@@ -46,12 +58,17 @@ class Book {
         $this->isbn = $this->parse_isbn($isbn[0]);
       }
 
-      $year = $dom->find("//div[@class='espTec']/p[7]/text()");
+      // year and page count may vary, we get the correct indexes
+      $number_items = $dom->count("//div[@class='espTec']/p");
+      $year_index = $number_items -1;
+      $pages_index = $number_items;
+
+      $year = $dom->find("//div[@class='espTec']/p[".$year_index."]/text()");
       if (sizeof($year) > 0) {
         $this->year = trim($year[0]);
       }
 
-      $pages = $dom->find("//div[@class='espTec']/p[8]/text()");
+      $pages = $dom->find("//div[@class='espTec']/p[".$pages_index."]/text()");
       if (sizeof($pages) > 0) {
         $this->pages = trim($pages[0]);
       }
@@ -166,4 +183,4 @@ class BookRetreiver {
 }
 
 $books = new BookRetreiver();
-print_r($books->findTopBooks());
+print_r($books->findbookByISBN('9788511150285'));
