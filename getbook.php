@@ -4,11 +4,14 @@ class DomFinder {
   function __construct($page) {
     $html = file_get_contents($page);
     $doc = new DOMDocument();
-    $doc->preserveWhiteSpace = true;
-    $doc->resolveExternals = true;
-    @$doc->loadHTML($html);
-    $this->xpath = new DOMXPath($doc);
-    $this->xpath->registerNamespace("html", "http://www.w3.org/1999/xhtml");
+    $this->xpath = null;
+    if ($html) {
+      $doc->preserveWhiteSpace = true;
+      $doc->resolveExternals = true;
+      @$doc->loadHTML($html);
+      $this->xpath = new DOMXPath($doc);
+      $this->xpath->registerNamespace("html", "http://www.w3.org/1999/xhtml");
+    }
   }
 
   function find($criteria = NULL, $getAttr = FALSE) {
@@ -17,9 +20,9 @@ class DomFinder {
       $results = array();
       foreach ($entries as $entry) {
         if (!$getAttr) {
-          $results[] =  $entry->nodeValue;
+          $results[] = $entry->nodeValue;
         } else {
-          $results[] =  $entry->getAttribute($getAttr);
+          $results[] = $entry->getAttribute($getAttr);
         }
       }
       return $results;
@@ -44,11 +47,12 @@ class DomFinder {
 class Book {
   public $cover = NULL;
   public $isbn = NULL;
+  public $language = NULL;
   public $year = NULL;
   public $title = NULL;
   public $sub_title = NULL;
   public $summary = NULL;
-  public $author = NULL;
+  public $authors = array();
   public $pages = NULL;
 
   function __construct($dom = NULL) {
@@ -58,6 +62,11 @@ class Book {
         $this->isbn = $this->parse_isbn($isbn[0]);
       }
 
+      $language = $dom->find("//div[@class='espTec']/p[3]/text()");
+      if (sizeof($language) > 0) {
+        $this->language = ucfirst(trim($language[0]));
+      }
+
       // year and page count may vary, we get the correct indexes
       $number_items = $dom->count("//div[@class='espTec']/p");
       $year_index = $number_items -1;
@@ -65,12 +74,18 @@ class Book {
 
       $year = $dom->find("//div[@class='espTec']/p[".$year_index."]/text()");
       if (sizeof($year) > 0) {
-        $this->year = trim($year[0]);
+        $year = trim($year[0]);
+        if (is_numeric($year)) {
+          $this->year = $year;
+        }
       }
 
       $pages = $dom->find("//div[@class='espTec']/p[".$pages_index."]/text()");
       if (sizeof($pages) > 0) {
-        $this->pages = trim($pages[0]);
+        $pages = trim($pages[0]);
+        if (is_numeric($pages)) {
+          $this->pages = $pages;
+        }
       }
 
       $cover = $dom->find("//div[@class='boxImg2']/img",'src');
@@ -93,12 +108,18 @@ class Book {
         $this->summary = $summary[0];
       }
 
-      $author = $dom->find("//div[@class='detalheEsq2']/p[2]/a");
-      if (sizeof($author) > 0) {
-        $this->author = $this->parse_author($author[0]);
-      }
-
+      $authors = $dom->find("//div[@class='detalheEsq2']");
+      $authors_names = $this->get_authors($authors) ;
+      $this->authors = $this->parse_authors($authors_names);
     }
+  }
+
+  function get_authors($authors) {
+    if (sizeof($authors) > 0) {
+      preg_match_all("/Autor:(.*)/", $authors[0], $names);
+      return $names[1];
+    }
+    return null;
   }
 
   function get_cover($cover = null) {
@@ -134,17 +155,19 @@ class Book {
     return $title;
   }
 
-  function parse_author($author = NULL) {
-    if ($author) {
-      $author = strtolower($author);
-      $tokens = explode(", ", $author);
-      // Only reformat if there is a comma
-      if (sizeof($tokens) > 1) {
-        $author = $tokens[1] . " " . $tokens[0];
+  function parse_authors($authors = array()) {
+    if (sizeof($authors) > 0) {
+      foreach ($authors as $key => $author) {
+        $author = strtolower(trim($author));
+        $tokens = explode(", ", $author);
+        // Only reformat if there is a comma
+        if (sizeof($tokens) > 1) {
+          $author = $tokens[1] . " " . $tokens[0];
+        }
+        $authors[$key] = ucwords($author);
       }
-      $author = ucwords($author);
     }
-    return $author;
+    return $authors;
   }
 
 }
@@ -155,7 +178,7 @@ class BookRetreiver {
 
   function findTopBooks() {
     $books = array();
-    $dom = new DomFinder($this->base_url . "/scripts/cultura/maisv/maisv.asp");
+    $dom = new DomFinder($this->base_url . "/scripts/cultura/home/lancamentos.asp?titem=1");
     $book_urls = $dom->find("//div[@class='img_capa']/a", 'href');
     foreach ($book_urls as $book_url) {
       $book_dom = new DomFinder($this->base_url . $book_url);
@@ -183,4 +206,4 @@ class BookRetreiver {
 }
 
 $books = new BookRetreiver();
-print_r($books->findbookByISBN('9788511150285'));
+print_r($books->findTopBooks());
