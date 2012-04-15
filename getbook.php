@@ -2,7 +2,7 @@
 
 class DomFinder {
   function __construct($page) {
-    $html = file_get_contents($page);
+    $html = utf8_decode(file_get_contents($page));
     $doc = new DOMDocument();
     $this->xpath = null;
     if ($html) {
@@ -122,9 +122,12 @@ class Book {
     return null;
   }
 
-  function get_cover($cover = null) {
-    if ($cover) {
-      $cover = str_replace("capas","capas_lg", $cover);
+  function get_cover($cover_orig = null) {
+    if ($cover_orig) {
+      $cover = str_replace("capas","capas_lg", $cover_orig);
+      if (!@file_get_contents($cover,0,null,0,1)) {
+        $cover = null;
+      }
     }
     return $cover;
   }
@@ -140,16 +143,27 @@ class Book {
       $title = strtolower($title);
       $tokens = explode(", ", $title);
       if (sizeof($tokens) > 1) {
-        // Only reformat words with inverted article title name
-        if (strlen($tokens[1]) <= 3) {
-          $title = $tokens[1] . " " . $tokens[0];
-        }
-        // If title has a subtitle treat it accordingly
-        if (strstr($tokens[1], ' - ')) {
-          $subtitle_tokens = explode(" - ", $tokens[1]);
-          $title = $subtitle_tokens[0] . " " . $tokens[0] . " - " . $subtitle_tokens[1];
+        // there are too many commas, which means, many subtitles
+        if (sizeof($tokens) > 2) {
+          $title = $tokens[2];
+        } else {
+          $tokens[1] = preg_replace("/(v\.[0-9]*)( - )?(.*)/", "$3$2", $tokens[1]);
+          // Only reformat words with inverted article title name
+          if (strlen($tokens[1]) <= 3) {
+            $title = $tokens[1] . " " . $tokens[0];
+          }
+          // If title has a subtitle treat it accordingly
+          if (strstr($tokens[1], ' - ')) {
+            $subtitle_tokens = explode(" - ", $tokens[1]);
+            if (trim($subtitle_tokens[1])) {
+              $title = $subtitle_tokens[0] . " " . $tokens[0] . " - " . $subtitle_tokens[1];
+            } else {
+              $title = $subtitle_tokens[0] . " - " . $tokens[0];
+            }
+          }
         }
       }
+      $title = trim(preg_replace("/v\.[0-9]*( - )?(.*)/", "$2", $title));
       $title = ucwords($title);
     }
     return $title;
@@ -204,6 +218,8 @@ class BookRetreiver {
     return NULL;
   }
 }
-
-$books = new BookRetreiver();
-print_r($books->findTopBooks());
+/*
+$retreiver = new BookRetreiver();
+$book =  $retreiver->findBookByISBN('9788578270698');
+print_r($book);
+print_r(utf8_decode($book->summary));*/
