@@ -2,7 +2,7 @@
 
 class DomFinder {
   function __construct($page) {
-    $html = utf8_decode(file_get_contents($page));
+    $html = file_get_contents($page);
     $doc = new DOMDocument();
     $this->xpath = null;
     if ($html) {
@@ -218,8 +218,3 @@ class BookRetreiver {
     return NULL;
   }
 }
-/*
-$retreiver = new BookRetreiver();
-$book =  $retreiver->findBookByISBN('9788578270698');
-print_r($book);
-print_r(utf8_decode($book->summary));*/
