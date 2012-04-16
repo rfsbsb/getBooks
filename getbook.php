@@ -140,7 +140,7 @@ class Book {
 
   function parse_title($title = NULL) {
     if ($title) {
-      $title = strtolower($title);
+      $title = strtr(strtolower($title),"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÜÚÞß","àáâãäåæçèéêëìíîïðñòóôõö÷øùüúþÿ");
       $tokens = explode(", ", $title);
       if (sizeof($tokens) > 1) {
         // there are too many commas, which means, many subtitles
@@ -172,7 +172,7 @@ class Book {
   function parse_authors($authors = array()) {
     if (sizeof($authors) > 0) {
       foreach ($authors as $key => $author) {
-        $author = strtolower(trim($author));
+        $author = trim(strtr(strtolower($author),"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÜÚÞß","àáâãäåæçèéêëìíîïðñòóôõö÷øùüúþÿ"));
         $tokens = explode(", ", $author);
         // Only reformat if there is a comma
         if (sizeof($tokens) > 1) {
