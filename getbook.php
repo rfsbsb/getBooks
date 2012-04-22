@@ -2,7 +2,7 @@
 
 class DomFinder {
   function __construct($page) {
-    $html = file_get_contents($page);
+    $html = @file_get_contents($page);
     $doc = new DOMDocument();
     $this->xpath = null;
     if ($html) {
@@ -15,7 +15,7 @@ class DomFinder {
   }
 
   function find($criteria = NULL, $getAttr = FALSE) {
-    if ($criteria) {
+    if ($criteria && $this->xpath) {
       $entries = $this->xpath->query($criteria);
       $results = array();
       foreach ($entries as $entry) {
@@ -32,7 +32,7 @@ class DomFinder {
 
   function count($criteria = NULL) {
     $items = 0;
-    if ($criteria) {
+    if ($criteria && $this->xpath) {
       $entries = $this->xpath->query($criteria);
       foreach ($entries as $entry) {
         $items++;
@@ -141,6 +141,7 @@ class Book {
   function parse_title($title = NULL) {
     if ($title) {
       $title = strtr(strtolower($title),"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÜÚÞß","àáâãäåæçèéêëìíîïðñòóôõö÷øùüúþÿ");
+	  $title = str_replace("(livro de bolso)", "", $title);
       $tokens = explode(", ", $title);
       if (sizeof($tokens) > 1) {
         // there are too many commas, which means, many subtitles
@@ -212,8 +213,9 @@ class BookRetreiver {
       $query_string = http_build_query($params);
       $book_dom = new DomFinder($search_url . $query_string);
       $book = new Book($book_dom);
-      return $book;
-
+      if (!empty($book->isbn)) {
+        return $book;
+      }
     }
     return NULL;
   }
