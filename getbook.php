@@ -173,7 +173,8 @@ class Book {
   function parse_authors($authors = array()) {
     if (sizeof($authors) > 0) {
       foreach ($authors as $key => $author) {
-        $author = trim(strtr(strtolower($author),"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÜÚÞß","àáâãäåæçèéêëìíîïðñòóôõö÷øùüúþÿ"));
+        $author = strtr(strtolower($author),"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÜÚÞß","àáâãäåæçèéêëìíîïðñòóôõö÷øùüúþÿ");
+        $author = trim(preg_replace("/([0-9\-()]*)/", "", $author));
         $tokens = explode(", ", $author);
         // Only reformat if there is a comma
         if (sizeof($tokens) > 1) {
@@ -188,7 +189,7 @@ class Book {
 }
 
 
-class BookRetreiver {
+class BookRetriever {
   protected $base_url = "http://www.livrariacultura.com.br";
 
   function findTopBooks() {
