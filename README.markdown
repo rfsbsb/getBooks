@@ -6,7 +6,7 @@ This script relies on PHP DOM classes and was only tested in UNIX enviroment wit
 
 There are tree classes:
 
-* DomFinder - Wich is an abstraction on PHP DOM class to make it easier to navigate in the document using XPATH
+* DomFinder - This is an abstraction on PHP DOM class to make it easier to navigate in the document using XPATH
 * Book - Book data and info parsing methods.
 * BookRetriever - Methods for search and retreive some especific book data.
 
