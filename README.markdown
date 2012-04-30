@@ -8,7 +8,7 @@ There are tree classes:
 
 * DomFinder - Wich is an abstraction on PHP DOM class to make it easier to navigate in the document using XPATH
 * Book - Book data and info parsing methods.
-* BookRetreiver - Methods for search and retreive some especific book data.
+* BookRetriever - Methods for search and retreive some especific book data.
 
 Licensing
 =========
