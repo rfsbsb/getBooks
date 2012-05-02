@@ -72,21 +72,21 @@ class Book {
       $year_index = $number_items -1;
       $pages_index = $number_items;
 
-      $pages = $dom->find("//div[@class='espTec']/p[".$pages_index."]/text()");
-      if (sizeof($pages) > 0) {
-        $pages = trim($pages[0]);
-        if (is_numeric($pages)) {
-          $this->pages = $pages;
+      $year = $dom->find("//div[@class='espTec']/p[".$year_index."]/text()");
+      if (sizeof($year) > 0) {
+        $year = trim($year[0]);
+        if (is_numeric($year)) {
+          $this->year = $year;
         }
       }
 
-      // If there's pages, we can trust year, otherwise we set both null.
-      if ($this->pages) {
-        $year = $dom->find("//div[@class='espTec']/p[".$year_index."]/text()");
-        if (sizeof($year) > 0) {
-          $year = trim($year[0]);
-          if (is_numeric($year)) {
-            $this->year = $year;
+      // If there's year, we can trust pages, otherwise we set both null.
+      if ($this->year) {
+        $pages = $dom->find("//div[@class='espTec']/p[".$pages_index."]/text()");
+        if (sizeof($pages) > 0) {
+          $pages = trim($pages[0]);
+          if (is_numeric($pages)) {
+            $this->pages = $pages;
           }
         }
       } else {
