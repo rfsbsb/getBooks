@@ -57,9 +57,12 @@ class Book {
 
   function __construct($dom = NULL) {
     if ($dom) {
-      $isbn = $dom->find("//div[@class='espTec']/p[2]/script");
-      if (sizeof($isbn) > 0) {
-        $this->isbn = $this->parse_isbn($isbn[0]);
+      $isbn13 = $dom->find("//div[@class='espTec']/p[2]/script");
+      $isbn10 = $dom->find("//div[@class='espTec']/p[1]/script");
+      if (sizeof($isbn13) > 0) {
+        $this->isbn = $this->parse_isbn($isbn13[0]);
+      } elseif (sizeof($isbn10) > 0) {
+        $this->isbn = $this->parse_isbn($isbn10[0]);
       }
 
       $language = $dom->find("//div[@class='espTec']/p[3]/text()");
