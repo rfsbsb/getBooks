@@ -57,25 +57,22 @@ class Book {
 
   function __construct($dom = NULL) {
     if ($dom) {
-      $isbn13 = $dom->find("//div[@class='espTec']/p[2]/script");
-      $isbn10 = $dom->find("//div[@class='espTec']/p[1]/script");
+      $book_id = $this->parse_book_id($dom->find("//link[@rel='canonical']",'href'));
+
+      $isbn13 = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContIsbn13']");
+      $isbn10 = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContIsbn']");
       if (sizeof($isbn13) > 0) {
-        $this->isbn = $this->parse_isbn($isbn13[0]);
+        $this->isbn = trim($isbn13[0]);
       } elseif (sizeof($isbn10) > 0) {
-        $this->isbn = $this->parse_isbn($isbn10[0]);
+        $this->isbn = trim($isbn10[0]);
       }
 
-      $language = $dom->find("//div[@class='espTec']/p[3]/text()");
+      $language = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContIdioma']");
       if (sizeof($language) > 0) {
-        $this->language = ucfirst(trim($language[0]));
+        $this->language = ucfirst(strtolower(trim($language[0])));
       }
 
-      // year and page count may vary, we get the correct indexes
-      $number_items = $dom->count("//div[@class='espTec']/p");
-      $year_index = $number_items -1;
-      $pages_index = $number_items;
-
-      $year = $dom->find("//div[@class='espTec']/p[".$year_index."]/text()");
+      $year = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContAnoLancamento']");
       if (sizeof($year) > 0) {
         $year = trim($year[0]);
         if (is_numeric($year)) {
@@ -83,73 +80,78 @@ class Book {
         }
       }
 
-      // If there's year, we can trust pages, otherwise we set both null.
-      if ($this->year) {
-        $pages = $dom->find("//div[@class='espTec']/p[".$pages_index."]/text()");
-        if (sizeof($pages) > 0) {
-          $pages = trim($pages[0]);
-          if (is_numeric($pages)) {
-            $this->pages = $pages;
-          }
+      $pages = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContNumeroPaginas']");
+      if (sizeof($pages) > 0) {
+        $pages = trim($pages[0]);
+        if (is_numeric($pages)) {
+          $this->pages = $pages;
         }
-      } else {
-        $this->pages = $this->year = NULL;
       }
 
-      $cover = $dom->find("//div[@class='boxImg2']/img",'src');
-      if (sizeof($cover) > 0) {
-        $this->cover = $this->get_cover($cover[0]);
+      if ($book_id) {
+        $this->cover = $this->get_cover($book_id);
       }
 
-      $title = $dom->find("//div[@class='detalheEsq2']/h2[contains(@class, 'resenha')]");
+      $title = $dom->find("//h1[@id='Conteudo_PainelEventoInformacao_Titulo_Resenha']");
       if (sizeof($title) > 0) {
         $this->title = $this->parse_title($title[0]);
       }
 
-      $sub_title = $dom->find("//div[@class='detalheEsq2']/h2[contains(@class, 'sub_resenha')]");
+      $sub_title = $dom->find("//h2[@id='Conteudo_PainelEventoInformacao_SubTitulo_Resenha']");
       if (sizeof($sub_title) > 0) {
         $this->sub_title = $this->parse_title($sub_title[0]);
       }
 
-      $summary = $dom->find("//div[@class='resenha']/p");
+      $summary = $dom->find("//div[@id='Conteudo_PainelEventoDescricao_PainelSinopseSobreAutor1_contSinopse']");
       if (sizeof($summary) > 0) {
-        $this->summary = $summary[0];
+        $this->summary = trim($summary[0]);
       }
 
-      $authors = $dom->find("//div[@class='detalheEsq2']");
-      $authors_names = $this->get_authors($authors) ;
+      $authors = $dom->find("//div[@class='detalheEsq2']/p");
+      $authors_names = $this->get_authors_names($authors);
       $this->authors = $this->parse_authors($authors_names);
     }
   }
 
-  function get_authors($authors) {
+  function parse_book_id($link) {
+    $url = $link[0];
+    if (preg_match('/\/Produto\/LIVRO\/[A-Z0-9-_]*\/([0-9]*)/', $url, $matches)) {
+      return $matches[1];
+    }
+
+    return false;
+  }
+
+  function get_authors_names($authors) {
     if (sizeof($authors) > 0) {
-      preg_match_all("/Autor:(.*)/", $authors[0], $names);
-      return $names[1];
+      $authors_names = array();
+      foreach ($authors as $author) {
+        if (preg_match("/Autor:(.*)/", $author, $names)) {
+          $authors_names[] = trim($names[1]);
+        }
+      }
+      return $authors_names;
     }
     return null;
   }
 
-  function get_cover($cover_orig = null) {
-    if ($cover_orig) {
-      $cover = str_replace("capas","capas_lg", $cover_orig);
-      if (!@file_get_contents($cover,0,null,0,1)) {
-        $cover = null;
-      }
+  function get_cover($book_id) {
+    # TODO: find a way to get the correct CDN. It's working now, but should stop
+    $base_url_cover = "http://cdn.b5e8.upx.net.br/imagens/imagem/capas_lg/";
+    $base_dir = substr($book_id, -3, 3);
+    $cover = $base_url_cover . $base_dir . "/". $book_id . ".jpg";
+    $headers = get_headers($cover, true);
+    if (strstr($headers[0], '404')) {
+      $cover = null;
     }
     return $cover;
-  }
-
-  function parse_isbn($isbn) {
-    $isbn = str_replace("document.write('", "", $isbn);
-    $isbn = str_replace("');", "", $isbn);
-    return trim(html_entity_decode($isbn));
   }
 
   function parse_title($title = NULL) {
     if ($title) {
       $title = strtr(strtolower($title),"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÜÚÞß","àáâãäåæçèéêëìíîïðñòóôõö÷øùüúþÿ");
-	  $title = str_replace("(livro de bolso)", "", $title);
+      // removing useless information
+	    $title = str_replace("(livro de bolso)", "", $title);
       $tokens = explode(", ", $title);
       if (sizeof($tokens) > 1) {
         // there are too many commas, which means, many subtitles
@@ -200,6 +202,18 @@ class Book {
 class BookRetriever {
   protected $base_url = "http://www.livrariacultura.com.br";
 
+  function getBookUrl($url = null) {
+    if ($url) {
+      $opts = array('http' => array('max_redirects'=>1, 'ignore_errors'=>1));
+      stream_context_get_default($opts);
+      $headers = get_headers($url, true);
+      if (isset($headers['Location']) && preg_match('/nitem=([0-9]*)&/', $headers['Location'], $matches) ) {
+        return $this->base_url . "/Produto/LIVRO/" . $matches[1];
+      }
+    }
+    return false;
+  }
+
   function findTopBooks() {
     $books = array();
     $dom = new DomFinder($this->base_url . "/scripts/cultura/home/lancamentos.asp?titem=1");
@@ -220,7 +234,8 @@ class BookRetriever {
       $params['palavraISBN'] = $isbn;
 
       $query_string = http_build_query($params);
-      $book_dom = new DomFinder($search_url . $query_string);
+      $url = $this->getBookUrl($search_url . $query_string);
+      $book_dom = new DomFinder($url);
       $book = new Book($book_dom);
       if (!empty($book->isbn)) {
         return $book;
