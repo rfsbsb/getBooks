@@ -263,6 +263,3 @@ class BookRetriever {
     return NULL;
   }
 }
-
-$b = new BookRetriever();
-print_r($b->findBookByISBN('9780756410575'));
