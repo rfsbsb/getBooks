@@ -1,8 +1,14 @@
 <?php
 
 class DomFinder {
+
+  function file_get_contents_utf8($fn) {
+    $content = file_get_contents($fn);
+    return mb_convert_encoding($content, 'HTML-ENTITIES', "UTF-8");
+  }
+
   function __construct($page) {
-    $html = @file_get_contents($page);
+    $html = @$this->file_get_contents_utf8($page);
     $doc = new DOMDocument();
     $this->xpath = null;
     if ($html) {
@@ -54,72 +60,89 @@ class Book {
   public $summary = NULL;
   public $authors = array();
   public $pages = NULL;
+  private $dom;
 
   function __construct($dom = NULL) {
     if ($dom) {
+      $this->dom = $dom;
+      $this->parse_general_data();
+
       $book_id = $this->parse_book_id($dom->find("//link[@rel='canonical']",'href'));
-
-      $isbn13 = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContIsbn13']");
-      $isbn10 = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContIsbn']");
-      if (sizeof($isbn13) > 0) {
-        $this->isbn = trim($isbn13[0]);
-      } elseif (sizeof($isbn10) > 0) {
-        $this->isbn = trim($isbn10[0]);
-      }
-
-      $language = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContIdioma']");
-      if (sizeof($language) > 0) {
-        $this->language = ucfirst(strtolower(trim($language[0])));
-      }
-
-      $year = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContAnoLancamento']");
-      if (sizeof($year) > 0) {
-        $year = trim($year[0]);
-        if (is_numeric($year)) {
-          $this->year = $year;
-        }
-      }
-
-      $pages = $dom->find("//span[@id='Conteudo_PainelEventoDescricao_PainelEspecificacaoTecnica1_ContNumeroPaginas']");
-      if (sizeof($pages) > 0) {
-        $pages = trim($pages[0]);
-        if (is_numeric($pages)) {
-          $this->pages = $pages;
-        }
-      }
 
       if ($book_id) {
         $this->cover = $this->get_cover($book_id);
       }
 
-      $title = $dom->find("//h1[@id='Conteudo_PainelEventoInformacao_Titulo_Resenha']");
+      $title = $dom->find("//title");
+
       if (sizeof($title) > 0) {
         $this->title = $this->parse_title($title[0]);
       }
 
-      $sub_title = $dom->find("//h2[@id='Conteudo_PainelEventoInformacao_SubTitulo_Resenha']");
+      /*$sub_title = $dom->find("//h2[@id='Conteudo_PainelEventoInformacao_SubTitulo_Resenha']");
       if (sizeof($sub_title) > 0) {
         $this->sub_title = $this->parse_title($sub_title[0]);
-      }
+      }*/
 
-      $summary = $dom->find("//div[@id='Conteudo_PainelEventoDescricao_PainelSinopseSobreAutor1_contSinopse']");
+      $summary = $dom->find("//meta[@name='description']", 'content');
       if (sizeof($summary) > 0) {
         $this->summary = trim($summary[0]);
       }
 
-      $authors = $dom->find("//div[@class='detalheEsq2']/p");
+      $authors = $dom->find("//section[@class='description']/ul[@class='info']/li");
       $authors_names = $this->get_authors_names($authors);
       $this->authors = $this->parse_authors($authors_names);
     }
   }
 
+  function parse_general_data() {
+
+    $data = $this->dom->find("//section[@id='product-details']//div/ul/li");
+
+    foreach ($data as $key => $value) {
+      $value = trim($value);
+      $parts = explode(":", $value);
+      $parts[1] = preg_replace('/[\x{C2}\n+\r+\t+\s+]/u', '', $parts[1]);
+      $parts[1] = strtr(strtolower($parts[1]),"ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÜÚÞß","àáâãäåæçèéêëìíîïðñòóôõö÷øùüúþÿ");
+      switch (trim($parts[0])) {
+        case 'Idioma':
+          $this->language = ucfirst(strtolower($parts[1]));
+          break;
+        case 'Ano':
+          $this->year = $parts[1];
+          break;
+        case 'Código de Barras':
+          $this->isbn = $parts[1];
+          break;
+        case "Nº de Páginas":
+          $this->pages = $parts[1];
+          break;
+      }
+    }
+  }
+
   function parse_book_id($link) {
     $url = $link[0];
-    if (preg_match('/\/Produto\/LIVRO\/[A-Z0-9-_]*\/([0-9]*)/', $url, $matches)) {
-      return $matches[1];
+    $parts = explode("-", $url);
+    $last = $parts[count($parts)-1];
+    if (is_numeric($last)) {
+      return $last;
     }
-
     return false;
+  }
+
+  function parse_isbn($dom) {
+      $isbn13 = $dom->find("//section[@id='product-details']/div/ul/li[9]/text()");
+      $isbn10 = $dom->find("//section[@id='product-details']/div/ul/li[10]/text()");
+      $isbn13 = isset($isbn13[1]) ? trim(preg_replace("/([^0-9])/", "$2", $isbn13[1])) : false;
+      $isbn10 = isset($isbn10[1]) ? trim(preg_replace("/([^0-9])/", "$2", $isbn10[1])) : false;
+
+      if (strlen($isbn13) > 0) {
+       return $isbn13;
+      } elseif (strlen($isbn10) > 0) {
+        return $isbn10;
+      }
+      return false;
   }
 
   function get_authors_names($authors) {
@@ -188,7 +211,7 @@ class Book {
         $tokens = explode(", ", $author);
         // Only reformat if there is a comma
         if (sizeof($tokens) > 1) {
-          $author = $tokens[1] . " " . $tokens[0];
+          $author = $tokens[1] . $tokens[0];
         }
         $authors[$key] = ucwords($author);
       }
@@ -204,12 +227,9 @@ class BookRetriever {
 
   function getBookUrl($url = null) {
     if ($url) {
-      $opts = array('http' => array('max_redirects'=>1, 'ignore_errors'=>1));
-      stream_context_get_default($opts);
-      $headers = get_headers($url, true);
-      if (isset($headers['Location']) && preg_match('/nitem=([0-9]*)&/', $headers['Location'], $matches) ) {
-        return $this->base_url . "/Produto/LIVRO/" . $matches[1];
-      }
+      $dom = new DomFinder($url);
+      $book_url = $dom->find("//div[@class='small-slider-content']/a", 'href');
+      return $book_url[0];
     }
     return false;
   }
@@ -228,10 +248,9 @@ class BookRetriever {
 
   function findBookByISBN($isbn = NULL) {
     if ($isbn) {
-      $search_url = $this->base_url . '/scripts/busca/busca.asp?';
-      $params['avancada'] = 1;
-      $params['titem'] = 1;
-      $params['palavraISBN'] = $isbn;
+      $search_url = $this->base_url . '/busca?';
+      $params['N'] = 0;
+      $params['Ntt'] = $isbn;
 
       $query_string = http_build_query($params);
       $url = $this->getBookUrl($search_url . $query_string);
@@ -244,3 +263,6 @@ class BookRetriever {
     return NULL;
   }
 }
+
+$b = new BookRetriever();
+print_r($b->findBookByISBN('9780756410575'));
