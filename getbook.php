@@ -211,7 +211,7 @@ class Book {
         $tokens = explode(", ", $author);
         // Only reformat if there is a comma
         if (sizeof($tokens) > 1) {
-          $author = $tokens[1] . $tokens[0];
+          $author = $tokens[1] . " " . substr($tokens[0], 2);
         }
         $authors[$key] = ucwords($author);
       }
